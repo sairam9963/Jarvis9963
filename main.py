@@ -7,22 +7,39 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 from easytool import funcQA, restbench, toolbench_retrieve, toolbench
 from easytool.util import *
 
-# Model selection: LLaMA 2 or Falcon
-MODEL_NAME = "meta-llama/Llama-2-7b-chat-hf"  # LLaMA 2
-# MODEL_NAME = "tiiuae/falcon-7b"  # Uncomment for Falcon
+# Model selection based on user input
+MODEL_CHOICES = {
+    "llama": "meta-llama/Llama-2-7b-chat-hf",
+    "falcon": "tiiuae/falcon-7b",
+    "mistral": "mistralai/Mistral-7B-Instruct"
+}
 
-# Load tokenizer and model
-print("Loading Model:", MODEL_NAME)
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, torch_dtype="auto", device_map="auto")
+def load_model(model_name):
+    """ Load the selected model """
+    print(f"Loading {model_name} model...")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
+    return tokenizer, model
 
-# Create text generation pipeline
-generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model', type=str, default='llama', choices=MODEL_CHOICES.keys(), help="Choose model: llama, falcon, mistral")
+    parser.add_argument('--task', type=str, default='funcqa', help='funcqa, toolbench_retrieve, toolbench, restbench')
+    parser.add_argument('--data_type', type=str, default='G3')
+    
+    args = parser.parse_args()
 
-def generate_response(prompt):
-    """ Generate AI response using the chosen LLM """
-    result = generator(prompt, max_length=200, do_sample=True, temperature=0.7)
-    return result[0]['generated_text']
+    # Load the selected model
+    MODEL_NAME = MODEL_CHOICES[args.model]
+    tokenizer, model = load_model(MODEL_NAME)
+    generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
+
+    def generate_response(prompt):
+        result = generator(prompt, max_length=200, do_sample=True, temperature=0.7)
+        return result[0]['generated_text']
+
+    # Task execution remains the same
+    print("Executing task:", args.task)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -80,3 +97,4 @@ if __name__ == '__main__':
     else:
         print("Wrong task name")
         exit()
+
